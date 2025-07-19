@@ -1,19 +1,21 @@
 # LuaStore
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![Version](https://img.shields.io/badge/version-0.5-blue.svg)](https://github.com/your-username/your-repo)
+
+[![Status](https://img.shields.io/badge/status-active-success.svg)](https://github.com/alexmiles-qwq/LuaStore/)
+[![Version](https://img.shields.io/badge/version-0.6-blue.svg)](https://github.com/alexmiles-qwq/LuaStore/)
 [![Language](https://img.shields.io/badge/language-Luvit%20/%20Lua-orange.svg)](https://luvit.io/)
 
-A simple, self-hosted, file-based key-value datastore server built with Luvit. It provides a lightweight HTTP API for basic data persistence, inspired by Roblox's DataStore service. It's ideal for small projects, game development prototypes, or as a local alternative to cloud-based data stores.
+A simple, secure, self-hosted, file-based key-value datastore server built with Luvit. It provides a lightweight HTTP API for basic data persistence, inspired by Roblox's DataStore service. It's ideal for small projects, game development prototypes, or as a local alternative to cloud-based data stores.
 
 ## Features
 
-- **Simple Key-Value Storage:** Store and retrieve data using simple keys.
+- **Simple Key-Value Storage:** Store and retrieve data using simple keys, organized by DataStore names.
+- **Secure by Default:**
+    - **Mandatory Strong Token:** The server will not start if a weak or default secret token is used.
+    - **Brute-Force Protection:** Automatically blocks IP addresses after multiple failed login attempts.
 - **HTTP API:** Easy-to-use API with `get`, `set`, `increment`, and `remove` operations.
 - **File-Based Persistence:** The entire database is stored in a single `datastore.json` file, making it portable and easy to manage.
 - **In-Memory Caching:** All data is held in memory for fast access, with periodic saves to disk.
 - **Auto-Saving:** Automatically saves the database to the file every 60 seconds to prevent data loss.
-- **Secure Access:** Protects your server with a required secret token for all requests.
-- **Multi-Tenancy:** Supports data isolation for different projects using an `X-Place-Id` header.
 
 ## Getting Started
 
@@ -23,25 +25,21 @@ You must have [Luvit](https://luvit.io/install.html) installed on your system.
 
 ### Installation
 
-1.  **Clone the repository or save the code:**
+1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/alexmiles-qwq/LuaStore
-    cd your-repo
+    git clone https://github.com/alexmiles-qwq/LuaStore.git
+    cd LuaStore
     ```
-    Or, simply save the code as `server.lua`.
 
 2.  **Configure the Server:**
-    Open `server.lua` in a text editor. **It is critical that you change the `SECRET_TOKEN`**.
+    Open `server.lua` in a text editor. **This is the most important step.** You must change the `SECRET_TOKEN` to a long and secure password.
     ```lua
-    -- --- Configuration ---
-    local PORT = 2281
-    local DB_FILE_PATH = 'datastore.json'
-
     -- !! IMPORTANT !!
-    -- This token is the password for your server.
-    -- The request MUST use the same token to get access.
-    local SECRET_TOKEN = "change-this-to-a-very-long-and-secret-password"
+    -- This token is the password for your server. CHANGE IT!
+    -- The server WILL NOT START if you use a weak token.
+    local SECRET_TOKEN = "change-this-to-a-very-long-and-secure-password"
     ```
+    The server will refuse to start if the token is the default (`"ae"`) or shorter than 16 characters.
 
 3.  **Run the Server:**
     Execute the following command in your terminal from the file's directory:
@@ -52,18 +50,15 @@ You must have [Luvit](https://luvit.io/install.html) installed on your system.
 If successful, you will see output like this:
 ```
 Starting LocalDataStore server...
-Database file not found. A new one will be created.
+Database loaded successfully from datastore.json
 Server listening on http://127.0.0.1:2281
- Auto-saving every 60 seconds.
+Auto-saving every 60 seconds.
+Rate limiting active: 5 failed attempts per IP will result in a 300-second ban.
 ```
 
 ## API Usage
 
-All requests require two headers:
-- `Authorization`: Your secret token.
-- `X-Place-Id`: A unique identifier for your game or application to isolate data.
-
-The URL structure is `/operation/dataStoreName/key`.
+All API requests require the `Authorization` header containing your secret token. The URL structure is `/operation/dataStoreName/key`.
 
 ---
 
@@ -77,8 +72,7 @@ Creates or overwrites a value for a given key. The raw request body is saved as 
   ```bash
   curl -X POST \
     http://127.0.0.1:2281/set/PlayerData/Player_123 \
-    -H "Authorization: your-secret-token" \
-    -H "X-Place-Id: 98765" \
+    -H "Authorization: your-long-and-secret-token" \
     -H "Content-Type: application/json" \
     -d '{"level": 10, "gold": 500, "inventory": ["sword", "shield"]}'
   ```
@@ -99,8 +93,7 @@ Retrieves the value associated with a key.
   ```bash
   curl -X GET \
     http://127.0.0.1:2281/get/PlayerData/Player_123 \
-    -H "Authorization: your-secret-token" \
-    -H "X-Place-Id: 98765"
+    -H "Authorization: your-long-and-secret-token"
   ```
 - **Success Response:**
   ```json
@@ -123,8 +116,7 @@ Atomically increments a numeric value. If the key does not exist, it's assumed t
   ```bash
   curl -X POST \
     http://127.0.0.1:2281/increment/PlayerStats/Score \
-    -H "Authorization: your-secret-token" \
-    -H "X-Place-Id: 98765" \
+    -H "Authorization: your-long-and-secret-token" \
     -H "Content-Type: application/json" \
     -d '{"delta": 10}'
   ```
@@ -148,30 +140,31 @@ Deletes a key-value pair from the datastore.
   ```bash
   curl -X POST \
     http://127.0.0.1:2281/remove/PlayerData/Player_123 \
-    -H "Authorization: your-secret-token" \
-    -H "X-Place-Id: 98765"
+    -H "Authorization: your-long-and-secret-token"
   ```
 - **Success Response:**
   ```json
   { "success": true }
   ```
 
-## Security Warning
+## Security
 
-⚠️ **Change the default `SECRET_TOKEN` immediately.**
+This server includes several security features, but you should be aware of how they work.
 
-The default token (`"ae"`) is insecure and public. Failure to change it will allow anyone with access to the server's address to read and write your data. Choose a long, random, and unpredictable string for your token.
+### 1. Mandatory Strong Token
 
-## How It Works
+You **must** change the `SECRET_TOKEN` in `server.lua`. The server is designed to be "secure by default" and will not start with a known weak token.
+- **Requirement:** Must not be the default (`"ae"`).
+- **Recommendation:** At least 16+ random characters.
 
-The server loads the entire `datastore.json` file into memory on startup. All read and write operations are performed on this in-memory object for maximum speed. To ensure data persistence, a timer runs every 60 seconds to serialize the in-memory database back to the `datastore.json` file.
+### 2. Rate Limiting (Brute-Force Protection)
 
-If the `datastore.json` file is corrupted on startup, it will be backed up as `datastore.json.bak` and the server will start with a fresh, empty database.
+To prevent attackers from guessing your token, the server automatically tracks and blocks IPs that fail authentication too many times.
+- **Default Limit:** 5 failed attempts.
+- **Default Ban Time:** 300 seconds (5 minutes).
+- These values can be configured at the top of `server.lua`.
 
-## Credits
+### 3. Recommendation: Use a Reverse Proxy (HTTPS)
 
-- **Authors:** AlexMiles, foxi22815
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+For production or public-facing use, it is **highly recommended** to run this server behind a reverse proxy like [Nginx](https://www.nginx.com/) or [Caddy](https://caddyserver.com/) and enable **HTTPS (SSL/TLS)**.
+This will encrypt the traffic between your client and the server, protecting your `SECRET_TOKEN` from being intercepted as it travels over the network.
