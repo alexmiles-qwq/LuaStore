@@ -25,7 +25,7 @@ You must have [Luvit](https://luvit.io/install.html) installed on your system.
 
 1.  **Clone the repository or save the code:**
     ```bash
-    git clone https://github.com/your-username/your-repo.git
+    git clone https://github.com/alexmiles-qwq/LuaStore
     cd your-repo
     ```
     Or, simply save the code as `server.lua`.
